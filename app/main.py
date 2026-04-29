@@ -68,6 +68,12 @@ async def fetch_reviews(
     response.status_code = code
     return r
 
+@app.get("/id/{drama_id}/recs")
+async def fetch_recs(drama_id: str, response: Response) -> Dict[str, Any]:
+    code, r = await fetch_func(query=f"{drama_id}/recs", t="recs")
+
+    response.status_code = code
+    return r
 
 @app.get("/people/{person_id}")
 async def person(person_id: str, response: Response) -> Dict[str, Any]:
