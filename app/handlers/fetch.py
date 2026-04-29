@@ -917,3 +917,77 @@ class FetchEpisodes(BaseFetch):
 
     def _get(self):
         self._get_main_container()
+
+
+class FetchRecs(BaseFetch):
+    def __init__(self, soup, query, code, ok):
+        super().__init__(soup, query, code, ok)
+
+    def _get_main_container(self) -> None:
+        if self.soup is None:
+            return
+
+        container = self.soup.find("div", class_="app-body")
+        if container is None:
+            return
+
+        title = self._parse_title(container)
+        recs = self._parse_recs(container)
+        self.info = {
+            "title": title,
+            "recs": recs,
+        }
+
+    def _parse_title(self, item: Tag) -> str:
+        title_container = item.find("h1", class_="film-title")
+        return title_container.get_text(strip=True) if title_container else ""
+
+    def _parse_recs(self, item: Tag) -> List[Dict[str, Any]]:
+        recs_box = item.find("div", id="recs-box")
+        if recs_box is None:
+            return []
+
+        recs_list = recs_box.find_all(
+            "div",
+            class_="box-body"
+        )
+
+        recs = []
+        for rec in recs_list:
+            _title_tag = rec.find("a", class_="text-primary")
+            if _title_tag is None:
+                continue
+            title = _title_tag.get_text(strip=True)
+            slug = str(_title_tag.get("href", "")).strip("/")
+            url = urljoin(MYDRAMALIST_WEBSITE, slug)
+
+            # Extract year from the title
+            # Ex: Show Name (2014)
+            _year_match = re.search(r'\((\d{4})\)', title)
+            year = int(_year_match.group(1)) if _year_match else None
+            title = title.replace(f" ({year})", "").strip()
+
+            _img_tag = rec.find("img", class_="img-responsive")
+            img = str(_img_tag.get("src", "")) if _img_tag is not None else ""
+            img = img.replace(
+                "t.jpg", "c.jpg"
+            )
+
+            _body_tag = rec.find("div", class_="recs-body")
+            body = _body_tag.get_text(strip=False) if _body_tag is not None else ""
+
+            recs.append(
+                {
+                    "title": title,
+                    "image": img,
+                    "url": url,
+                    "slug": slug,
+                    "year": year,
+                    "rec": body,
+                }
+            )
+
+        return recs
+
+    def _get(self):
+        self._get_main_container()
